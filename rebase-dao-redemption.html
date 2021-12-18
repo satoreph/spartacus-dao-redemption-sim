@@ -1,6 +1,6 @@
 <!-- Rebase DAOs redemption (50/50) simulator -->
 <!-- Date of creation: 2021-12-18 -->
-<!-- v0.6.3 -->
+<!-- v0.6.5 -->
 
 <head>
 <meta charset="utf-8">
@@ -68,7 +68,7 @@ body {
     <r-var name="rfvtreasury" value="30000" type="Number" format=".0f"></r-var>
     <r-var name="spotprice" :value="ammreserveDAI/ammreserveSPA" type="Number" format=".2f"></r-var>
     <r-var name="redeemthreshold" value="50" type="Number" format=".2f"></r-var>
-    <r-var name="redeemmaxsize" value="30" type="Number" format=".0f"></r-var>
+    <r-var name="redeemmaxsize" value="10000" type="Number" format=".0f"></r-var>
     <!-- Derivative metrics -->
     <r-var name="rfvbackingprice" :value="rfvtreasury/supply" type="Number" format=".2f"></r-var>
     <r-var name="redeemprice" :value="((rfvbackingprice-spotprice) * redeemthreshold/100) + spotprice" type="Number" format=".2f"></r-var>
@@ -176,16 +176,25 @@ body {
 
     <h2>Short analysis: redemption/buy loops</h2>
     <p>
-        Arbitrageurs are likely to take profit from this opportunity, by looping between redemption and then buying back SPA on the market before doing another redemption etc, increasing their stack of SPA or their DAI balance along the way at each step.
+        Arbitrageurs are likely to take profit from this opportunity, by looping between redemption and then buying back SPA on the market before doing another redemption etc, increasing their stack of SPA or their DAI balance along the way at each step. In theory, we would expect that allowing a maximum of SPA to be redeemed in one go would be better, since redeeming leads to buying and hence to rising spot price and hence a higher redeeming price, which is less favorable for the protocol. To test whether this is true or not, a Max Redeem Size was implemented, and a liquidity market between SPA/DAI is simulated (which allows for Sell and Buy actions).
     </p>
     <p>
-        Set the Max Redeem Size to a huge value, then try to loop redemption then buying then redemption etc until redemption gets disabled (when Spot Price &ge; RFV Backing Price). Although redemption works easily when a single redemption is done and the redemption threshold is set at &lt;50%, looping redemption/buy completely offsets the balance and the protocol ends up losing both the treasury and the RFV Backing Price. Hence, although redemption seems like a nice idea with one iteration, if we account for multiple iterations then huge problems arise and the protocol's treasury ends up being completely depleted, with only minor effect on the RFV backing price, only the spot price benefitting and indeed rising above the RFV Backing Price, but with no treasury left. Interestingly, any value below or higher than 50% depletes the treasury more, and increases the RFV Backing Price less, than a 50% threshold, which suggests that per Romo's model, 50% is the optimal Redeem Threshold when there are redemption/buy loops by arbitrageurs. For example, we end up with $3,000 in RFV Treasury if the Redeeming Threshold is set at 100% or 5%, and the maximum we can retain is ~$11,000 with a 50% threshold.
+        Set the Max Redeem Size to a huge value, then try to loop redemption then buying then redemption etc until redemption gets disabled (when Spot Price &ge; RFV Backing Price). Although redemption works easily when a single redemption is done and the redemption threshold is set at &lt;50%, looping redemption/buy offsets the balance and the protocol ends up depleting the treasury faster than the RFV Backing Price increases, but both remain at reasonable levels ($23,000 remaining RFV Treasury and RFV Backing Price at ~$33). Interestingly, any value below or higher than 50% depletes the treasury more, and increases the RFV Backing Price less, than a 50% threshold, which suggests that per Romo's model, 50% is the optimal Redeem Threshold when there are redemption/buy loops by arbitrageurs.
     </p>
     <p>
-        Now set the Max Redeem Size to a lower value, e.g., 30 by default in this simulation. Then, try to redeem the max you can, in multiple steps, and then buy all at once (it doesn't matter whether you buy in one or multiple steps, there is no slippage nor fees in this simulation). You will now observe the RFV Treasury doesn't get nearly as much depleted, in fact with a 50% Redeeming Threshold, we retain ~$23,000 in RFV Treasury and $33.28 in RFV Backing Price, which is much better than without a Max Redeem Size! Yet, the protocol is still at a loss in terms of RFV Backing Price growth, with a ratio of 0.85x (i.e., we lost 16% more in RFV Treasury compared to the increase we gained in RFV Backing Price due to redemption looping). This needs to be worked further on to see if there is a set of parameters, or a hidden parameter, that could increase the growth rate more favorably. Another thing to account is that in practice, buys would happen in parallel to redeeming, so that no single wallet can have the time to redeem all their tokens because of the Max Redeem Size before the Spot Price increases, this can be accounted for by interleaving some buys in-between Redeems, which reduces even further the RFV Treasury depletion.
+        Note that in an earlier version of this document, it was said that redemption looping could almost fully deplete the treasury. This was due to a refresh bug, which caused the check for redemption to be only done at redemption, but not at buy or sell. This bug allowed to activate redemption when it should have been disabled. This is akin to an Oracle Attack, which suggests that it is of the utmost importance that the Oracle providing the spot price for SPA should be very accurate and up-to-date, to avoid undue redemptions that could deplete the treasury. A safeguard is to set a Max Redeem Size, so as to limit the damage in case this happens.
     </p>
     <p>
-        In conclusion, this simulation identified one key risk of uncontrolled redeeming: the risk of almost complete treasury depletion. And two key parameters were identified for a more controlled and favorable redeeming mechanism: 1- Redeem Threshold (optimal value appearing to be 50% exactly), which defines the Redeem Price in-between the spot price and RFV Backing Price ; 2- Max Redeem Size, which caps the maximum amount of SPA that can be redeemed in one transaction, which allows the protocol to update the treasury and hence the RFV Backing Price between transactions, and this enormously reduces the treasury depletion. This last point is counterintuitive, because we would expect that allowing a maximum of SPA to be redeemed in one go would be better, since redeeming leads to buying and hence to rising spot price and hence a higher redeeming price, which is less favorable for the protocol. But the simulation suggests the opposite happens for some reason.
+        Now set the Max Redeem Size to a lower value, e.g., 30 by default in this simulation. Then, try to redeem the max you can, in multiple steps, and then buy all at once (it doesn't matter whether you buy in one or multiple steps, there is no slippage nor fees in this simulation). You will now observe that the RFV Treasury gets slightly more depleted than with a huge (quasi-infinite) Max Redeem Size
+    </p>
+    <p>
+        Now try another experiment with Max Redeem Size: try to set it at a lower value like before, such as 30, but now try to interleave each redemption with a buy, to simulate arbitrageurs buying on the market in parallel to arbitrageurs who already own SPA and are redeeming. You will notice that we end up with a slightly more depleted RFV Treasury, and a slightly less increased RFV Backing Price. This confirms our initial intuition that Redemption is more profitable to the protocol if done in bulk, because afterwards the Redeeming Price rises and hence it becomes more and more profitable for arbitrageurs.
+    </p>
+    <p>
+        Hence, Max Redeem Size is not a crucial parameter and actually counterproductive for the Redemption mechanism to work, but it still be interesting to implement but with a high value as a safeguard mechanism against potential Oracle Attacks.
+    </p>
+    <p>
+        In conclusion, this simulation identified one key risk of uncontrolled redeeming: the risk of almost complete treasury depletion, which happens only during an Oracle Attack. And two key parameters were identified for a more controlled and favorable redeeming mechanism: 1- Redeem Threshold (optimal value appearing to be 50% exactly), which defines the Redeem Price in-between the spot price and RFV Backing Price ; 2- An up-to-date Oracle to avoid abuse of Redeeming when it should be disabled.
     </p>
     <p>
         It's worth noting that although this simulation only uses the RFV Treasury and RFV Backing Price, which are much easier to model since they only include the DAI stablecoin, the model can likely also apply to the Standalone Treasury (stablecoins + volatile assets like FTM but without LP tokens), see Credits for more infos on these other models.
