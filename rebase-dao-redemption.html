@@ -1,6 +1,6 @@
 <!-- Rebase DAOs redemption (50/50) simulator -->
 <!-- Date of creation: 2021-12-18 -->
-<!-- v0.6.1 -->
+<!-- v0.6.2 -->
 
 <head>
 <meta charset="utf-8">
@@ -122,7 +122,7 @@ body {
                     <br/><div>
                             <r-button id="redeembtn" label="Redeem" outlined="true" :click="{supply: supply-amountsparedeem, userholdingsSPA: userholdingsSPA-amountsparedeem, rfvtreasury: rfvtreasury-(amountsparedeem*redeemprice), userholdingsDAI: userholdingsDAI+amountsparedeem*redeemprice, amountsparedeem: 0}" onclick="checkRedemptionDone();"></r-button>
                             <r-button label="Sell" outlined="true" :click="{userholdingsSPA: userholdingsSPA-amountsparedeem, userholdingsDAI: userholdingsDAI+amountsparedeem*spotprice, ammreserveDAI: ammreserveDAI-amountsparedeem*spotprice, ammreserveSPA: ammreserveSPA+amountsparedeem, amountsparedeem: 0}" onclick="checkRedemptionDone();"></r-button>
-                            <r-button label="Reset simulation" outlined="true" :click="{supply: initsupply, rfvtreasury: initrfvtreasury, userholdingsSPA: 100, userholdingsDAI: 0, amountsparedeem: 0}"></r-button>
+                            <r-button label="Reset simulation" outlined="true" :click="{supply: initsupply, rfvtreasury: initrfvtreasury, userholdingsSPA: 100, userholdingsDAI: 0, amountsparedeem: 0, ammreserveDAI: 10000, ammreserveSPA: 1000}"></r-button>
                             <p>You will get <r-display :value="amountsparedeem*redeemprice"></r-display> DAI by redeeming
                             <br/>or <r-display :value="amountsparedeem*spotprice"></r-display> DAI by selling <r-display :value="amountsparedeem"></r-display> SPA.</p>
                         </div>
@@ -161,6 +161,7 @@ body {
     <ul>
         <li>The redeem threshold is a crucial parameter, it defines the redeem price offered relative to the distance between the RFV backing price and (lower) spot price, with 0% the redeem price = spot price, and 100% the redeem price = RFV backing price. The spot price is necessarily lower than the RFV Backing Price for the redemption to work. Try 50% for a null growth rate (ie, the protocol does not lose nor profit with redemption), or &lt;50% for a positive growth rate (ie, the protocol profits by buying SPA back at a discount compared to treasury). Obviously, with &gt;50%, the protocol obtain a negative growth rate, which means it loses more treasury than it increases the RFV Backing Price, which means it buys SPA back at a premium.</li>
         <li>There is no check of account balance, so that you can "overborrow" and get into negative holdings, which will mess up the model :-) Checks could be implemented but it would complexify code much more, so please just don't do that!</li>
+        <li>In general, if you get a negative value anywhere, then something went wrong and the result should not be relied upon, you should reset the simulation by refreshing the page!</li>
     </li>
     </div>
     
