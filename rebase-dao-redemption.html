@@ -1,6 +1,6 @@
 <!-- Rebase DAOs redemption (50/50) simulator -->
 <!-- Date of creation: 2021-12-18 -->
-<!-- v0.6.7 -->
+<!-- v0.7.0 -->
 
 <head>
 <meta charset="utf-8">
@@ -54,6 +54,9 @@ body {
 <div id="main">
 <article>
 <h1>Spartacus Redemption (50/50) Simulator</h1>
+<h2>version: 0.7.0</h2>
+<br/>
+
 <r-scope name="varscope">
     <!-- Vars def -->
     <!-- Initial state memory (copy values here from supply and rfvtreasury) -->
@@ -66,6 +69,11 @@ body {
     <!-- Market (outside of the protocol) parameters -->
     <r-var name="ammreserveSPA" value="1000" type="Number" format=".2f"></r-var>
     <r-var name="ammreserveDAI" value="10000" type="Number" format=".2f"></r-var>
+    <r-var name="ammfee" value="0.3" type="Number" format=".2f"></r-var>
+    <r-var name="amountspaout" :value="((1-ammfee/100)*amountdaibuy*ammreserveSPA)/(ammreserveDAI+(1-ammfee/100)*amountdaibuy)" type="Number" format=".2f"></r-var> <!-- Simulation of Uniswap constant product + fee swap, kudos to Troughkin! -->
+    <r-var name="amountspaoutnofee" :value="(amountdaibuy*ammreserveSPA)/(ammreserveDAI+amountdaibuy)" type="Number" format=".2f"></r-var> <!-- to maintain k constant, we do not account for the fee when subtracting the amount to the reserve, simulating how the fees are withdrawing from the pool to give to LP token holders -->
+    <r-var name="amountdaiout" :value="((1-ammfee/100)*amountsparedeem*ammreserveDAI)/(ammreserveSPA+(1-ammfee/100)*amountsparedeem)" type="Number" format=".2f"></r-var>
+    <r-var name="amountdaioutnofee" :value="(amountsparedeem*ammreserveDAI)/(ammreserveSPA+amountsparedeem)" type="Number" format=".2f"></r-var>
     <!-- Protocol's parameters, will be dynamically updated -->
     <r-var name="supply" value="1000" type="Number" format=".0"></r-var>
     <r-var name="rfvtreasury" value="30000" type="Number" format=".0f"></r-var>
@@ -80,7 +88,7 @@ body {
     <r-var name="userholdingsDAI" value="0" type="Number" format=".2f"></r-var>
     <r-var name="userholdingsUSDtotal" :value="userholdingsSPA*spotprice + userholdingsDAI" type="Number" format=".2f"></r-var>
     <r-var name="amountsparedeem" value="0" type="Number" format=".2f"></r-var>
-    <r-var name="amountspabuy" value="0" type="Number" format=".2f"></r-var>
+    <r-var name="amountdaibuy" value="0" type="Number" format=".2f"></r-var>
 
     <h2>Presentation</h2>
     <div>
@@ -124,19 +132,19 @@ body {
                         </div>
                     <br/><div>
                             <r-button id="redeembtn" label="Redeem" outlined="true" :click="{supply: supply-amountsparedeem, userholdingsSPA: userholdingsSPA-amountsparedeem, rfvtreasury: rfvtreasury-(amountsparedeem*redeemprice), userholdingsDAI: userholdingsDAI+amountsparedeem*redeemprice, amountsparedeem: 0}" onclick="checkRedemptionDone();"></r-button>
-                            <r-button label="Sell" outlined="true" :click="{userholdingsSPA: userholdingsSPA-amountsparedeem, userholdingsDAI: userholdingsDAI+amountsparedeem*spotprice, ammreserveDAI: ammreserveDAI-amountsparedeem*spotprice, ammreserveSPA: ammreserveSPA+amountsparedeem, amountsparedeem: 0}" onclick="checkRedemptionDone();"></r-button>
+                            <r-button label="Sell" outlined="true" :click="{userholdingsSPA: userholdingsSPA-amountsparedeem, userholdingsDAI: userholdingsDAI+amountdaiout, ammreserveDAI: ammreserveDAI-amountdaioutnofee, ammreserveSPA: ammreserveSPA+amountsparedeem, amountsparedeem: 0}" onclick="checkRedemptionDone();"></r-button>
                             <p>You will get <r-display :value="amountsparedeem*redeemprice"></r-display> DAI by redeeming
-                            <br/>or <r-display :value="amountsparedeem*spotprice"></r-display> DAI by selling <r-display :value="amountsparedeem"></r-display> SPA.</p>
+                            <br/>or <r-display :value="amountdaiout"></r-display> DAI by selling <r-display :value="amountsparedeem"></r-display> SPA.</p>
                         </div>
                 </div>
             </td>
             <td>
                 <div>
                     <p>SPA in reserve: <r-dynamic bind="ammreserveSPA" max="11000000" step="100" sensitivity="0.01"></r-dynamic>, DAI in reserve: <r-dynamic bind="ammreserveDAI" max="11000000" step="100" sensitivity="0.01"></r-dynamic></p>
-                    <r-input label="Amount of SPA to buy" :value="amountspabuy" :change="{amountspabuy: parseFloat(value)}"></r-input>
-                    <r-button label="Max" outlined="" :click="{amountspabuy: userholdingsDAI/spotprice}"></r-button>
-                    <r-button label="Buy" outlined="true" :click="{userholdingsSPA: userholdingsSPA+amountspabuy, userholdingsDAI: userholdingsDAI-amountspabuy*spotprice, ammreserveDAI: ammreserveDAI+amountspabuy*spotprice, ammreserveSPA: ammreserveSPA-amountspabuy, amountspabuy: 0}" onclick="checkRedemptionDone();"></r-button>
-                    <p>You will get <r-display :value="amountspabuy"></r-display> SPA for <r-display :value="amountspabuy*spotprice"></r-display> DAI.
+                    <r-input label="Amount of DAI to spend to buy" :value="amountdaibuy" :change="{amountdaibuy: parseFloat(value)}"></r-input>
+                    <br/><r-button label="Max" outlined="" :click="{amountdaibuy: userholdingsDAI}"></r-button>
+                    <r-button label="Buy" outlined="true" :click="{userholdingsSPA: userholdingsSPA+amountspaout, userholdingsDAI: userholdingsDAI-amountdaibuy, ammreserveDAI: ammreserveDAI+amountdaibuy, ammreserveSPA: ammreserveSPA-amountspaoutnofee, amountdaibuy: 0}" onclick="checkRedemptionDone();"></r-button> <!-- userholdingsSPA: userholdingsSPA+amountspabuy is false! It doesn't account for slippage because the k constant between the two tokens reserves would not be maintained constant! -->
+                    <p>You will get <r-display :value="amountspaout" format=".2f"></r-display> SPA with a <r-dynamic bind="ammfee" max="100" format=".2f" step="0.005" sensitivity="0.001"></r-dynamic>%.
                 <div>
             </td>
         </tr>
