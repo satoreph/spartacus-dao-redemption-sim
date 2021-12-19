@@ -1,6 +1,6 @@
 <!-- Rebase DAOs redemption (50/50) simulator -->
 <!-- Date of creation: 2021-12-18 -->
-<!-- v0.6.5 -->
+<!-- v0.6.7 -->
 
 <head>
 <meta charset="utf-8">
@@ -60,6 +60,9 @@ body {
     <r-var name="initsupply" value="1000" type="Number" format=".0f"></r-var>
     <r-var name="initrfvtreasury" value="30000" type="Number" format=".0f"></r-var>
     <r-var name="initrfvbackingprice" :value="initrfvtreasury/initsupply" type="Number" format=".2f"></r-var>
+    <r-var name="initammreserveSPA" value="1000" type="Number" format=".2f"></r-var>
+    <r-var name="initammreserveDAI" value="10000" type="Number" format=".2f"></r-var>
+    <r-var name="initspotprice" :value="initammreserveDAI/initammreserveSPA" type="Number" format=".2f"></r-var>
     <!-- Market (outside of the protocol) parameters -->
     <r-var name="ammreserveSPA" value="1000" type="Number" format=".2f"></r-var>
     <r-var name="ammreserveDAI" value="10000" type="Number" format=".2f"></r-var>
@@ -122,7 +125,6 @@ body {
                     <br/><div>
                             <r-button id="redeembtn" label="Redeem" outlined="true" :click="{supply: supply-amountsparedeem, userholdingsSPA: userholdingsSPA-amountsparedeem, rfvtreasury: rfvtreasury-(amountsparedeem*redeemprice), userholdingsDAI: userholdingsDAI+amountsparedeem*redeemprice, amountsparedeem: 0}" onclick="checkRedemptionDone();"></r-button>
                             <r-button label="Sell" outlined="true" :click="{userholdingsSPA: userholdingsSPA-amountsparedeem, userholdingsDAI: userholdingsDAI+amountsparedeem*spotprice, ammreserveDAI: ammreserveDAI-amountsparedeem*spotprice, ammreserveSPA: ammreserveSPA+amountsparedeem, amountsparedeem: 0}" onclick="checkRedemptionDone();"></r-button>
-                            <r-button label="Reset simulation" outlined="true" :click="{supply: initsupply, rfvtreasury: initrfvtreasury, userholdingsSPA: 100, userholdingsDAI: 0, amountsparedeem: 0, ammreserveDAI: 10000, ammreserveSPA: 1000}"></r-button>
                             <p>You will get <r-display :value="amountsparedeem*redeemprice"></r-display> DAI by redeeming
                             <br/>or <r-display :value="amountsparedeem*spotprice"></r-display> DAI by selling <r-display :value="amountsparedeem"></r-display> SPA.</p>
                         </div>
@@ -138,28 +140,44 @@ body {
                 <div>
             </td>
         </tr>
+        <tr>
+            <td colspan="2">
+                <r-button label="Reset simulation with toy data" outlined="true" :click="{initsupply: 1000, initrfvtreasury: 30000, supply: initsupply, rfvtreasury: initrfvtreasury, userholdingsSPA: 100, userholdingsDAI: 0, amountsparedeem: 0, initammreserveDAI: 10000, initammreserveSPA: 1000, ammreserveDAI: 10000, ammreserveSPA: 1000}" onclick="checkRedemptionDone();"></r-button>
+                <r-button label="Reset simulation with real data (snapshot on 2021-12-19 with reduced spot price to enable redemption)" outlined="true" :click="{initsupply: 1234403, initrfvtreasury: 47919549, supply: 1234403, rfvtreasury: 47919549, userholdingsSPA: 1079901, userholdingsDAI: 0, amountsparedeem: 0, initammreserveDAI: 6542121, initammreserveSPA: 298738, ammreserveDAI: 6542121, ammreserveSPA: 298738}" onclick="checkRedemptionDone();"></r-button> <!-- values from dexscreener.com and spartacus.finance dashboard and https://info.spookyswap.finance/pair/0xfa5a5f0bc990be1d095c5385fff6516f6e03c0a7 -->
+                <!-- userholdingsSPA is set to the circulating supply of SPA, the rest being owned by the protocol -->
+            </td>
+        </tr>
     </tbody>
     </table>
 
     <div>
     <h2>Account</h2>
     <p>Your holdings: <r-display :value="userholdingsSPA" format=".2f"></r-display> SPA, <r-display :value="userholdingsDAI" format=".2f"></r-display> DAI, <r-display :value="userholdingsUSDtotal" format=".2f"></r-display> USD in total (SPA at spot price + DAI).</p>
-    <p>Protocol loss of RFV treasury compared to initial state: <r-display :value="(initrfvtreasury-rfvtreasury)/initrfvtreasury * 100"></r-display>%.</p>
-    <p>Protocol gain of RFV Backing Price compared to initial state: <r-display :value="(rfvbackingprice-initrfvbackingprice)/initrfvbackingprice * 100"></r-display>%.</p>
+    <p>
+        Protocol loss of RFV treasury compared to initial state: <r-display :value="(initrfvtreasury-rfvtreasury)/initrfvtreasury * 100" format=".2f"></r-display>%.
+        <br/>Protocol gain of RFV Backing Price compared to initial state: <r-display :value="(rfvbackingprice-initrfvbackingprice)/initrfvbackingprice * 100" format=".2f"></r-display>%.
+        <br/>Spot Price growth compared to initial state: <r-display :value="(spotprice-initspotprice)/initspotprice * 100" format=".2f"></r-display>%.
+    </p>
     <r-var name="fracrfvtreasury" :value="(rfvtreasury/initrfvtreasury)" type="Number" format=".4f"></r-var>
     <r-var name="fracrfvbackingprice" :value="(rfvbackingprice/initrfvbackingprice)" type="Number" format=".4f"></r-var>
     <r-var name="fracrfvtreasurytorecover" :value="1/fracrfvtreasury" type="Number" format=".4f"></r-var>
-    <r-var name="rfvgrowthratio" :value="1/(fracrfvtreasurytorecover/fracrfvbackingprice)" type="Number" format=".4f"></r-var>
-    <p>RFV treasury growth necessary to recover initial state: <r-display :value="fracrfvtreasurytorecover"></r-display>x
-        <br/>versus RFV Backing Price growth over initial state: <r-display :value="fracrfvbackingprice"></r-display>x
-        <br/>hence <strong>a growth ratio of <r-display :value="rfvgrowthratio" format=".4f"></r-display>x</strong> (i.e., RFV Backing Price grows <r-display :value="rfvgrowthratio" format="0.4f"></r-display>x faster than the RFV Treasury declines, which is equivalent to RFV Treasury declining at <r-display :value="1/rfvgrowthratio" format="0.4f"></r-display>x compared to RFV Backing Price growth).
-        <br/>Explanation: a &lt;1 value indicates a faster rate of decline of RFV Treasury compared to a slower rate of RFV Backing Price growth (this is bad), and a &gt;1 value indicates a faster growth of RFV Backing Price compared to a slower decline of RFV Treasury (this is good, it means the protocol bought and burnt SPA at a discount).</p>
+    <r-var name="rfvgrowthratio" :value="fracrfvbackingprice/fracrfvtreasurytorecover" type="Number" format=".4f"></r-var> <!-- equivalent alternative: fracrfvtreasury*fracrfvbackingprice -->
+    <r-var name="fracspotprice" :value="(spotprice/initspotprice)" type="Number" format=".4f"></r-var>
+    <r-var name="rfvspotgrowthratio" :value="fracspotprice/fracrfvtreasurytorecover" type="Number" format=".4f"></r-var>
+    <p>
+        RFV treasury growth necessary to recover initial state: <r-display :value="fracrfvtreasurytorecover" format=".4f"></r-display>x
+        <br/>versus RFV Backing Price growth over initial state: <r-display :value="fracrfvbackingprice" format=".4f"></r-display>x
+        <br/>and Spot Price growth over initial state: <r-display :value="fracspotprice" format=".4f"></r-display>x
+        <br/>hence <strong>a BackingPrice/Treasury growth ratio of <r-display :value="rfvgrowthratio" format=".4f"></r-display>x</strong> (i.e., RFV Backing Price grows <r-display :value="rfvgrowthratio" format="0.4f"></r-display>x faster than the RFV Treasury declines, which is equivalent to RFV Treasury declining at <r-display :value="1/rfvgrowthratio" format="0.4f"></r-display>x compared to RFV Backing Price growth).
+        <br/>Explanation: a &lt;1 value indicates a faster rate of decline of RFV Treasury compared to a slower rate of RFV Backing Price growth (this is bad), and a &gt;1 value indicates a faster growth of RFV Backing Price compared to a slower decline of RFV Treasury (this is good, it means the protocol bought and burnt SPA at a discount).
+        <br/>We also have <strong>a SpotPrice/Treasury growth ratio of <r-display :value="rfvspotgrowthratio" format=".4f"></r-display>x</strong>.
+    </p>
     </div>
 
     <div>
     <h2>Tips</h2>
     <ul>
-        <li>The redeem threshold is a crucial parameter, it defines the redeem price offered relative to the distance between the RFV backing price and (lower) spot price, with 0% the redeem price = spot price, and 100% the redeem price = RFV backing price. The spot price is necessarily lower than the RFV Backing Price for the redemption to work. Try 50% for a null growth rate (ie, the protocol does not lose nor profit with redemption), or &lt;50% for a positive growth rate (ie, the protocol profits by buying SPA back at a discount compared to treasury). Obviously, with &gt;50%, the protocol obtain a negative growth rate, which means it loses more treasury than it increases the RFV Backing Price, which means it buys SPA back at a premium.</li>
+        <li>The redeem threshold is a crucial parameter, it defines the redeem price offered relative to the distance between the RFV backing price and (lower) spot price, with 0% the redeem price = spot price, and 100% the redeem price = RFV backing price. The spot price is necessarily lower than the RFV Backing Price for the redemption to work. Try 50% for a null growth rate (ie, the protocol does not lose nor profit with redemption), or &lt;50% for a positive growth rate (ie, the protocol profits by buying SPA back at a discount compared to treasury). Obviously, with &gt;50%, the protocol obtains a negative growth rate, which means it loses more treasury than it increases the RFV Backing Price, which means it buys SPA back at a premium. With 100% (no Redeem Threshold, Redeem Price = RFV Backing Price), the RFV Backing Price stays the same, this is when the protocol loses the most.</li>
         <li>There is no check of account balance, so that you can "overborrow" and get into negative holdings, which will mess up the model :-) Checks could be implemented but it would complexify code much more, so please just don't do that!</li>
         <li>In general, if you get a negative value anywhere, then something went wrong and the result should not be relied upon, you should reset the simulation by refreshing the page!</li>
     </li>
