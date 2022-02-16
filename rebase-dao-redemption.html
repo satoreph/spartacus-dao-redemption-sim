@@ -6,6 +6,7 @@
 <meta charset="utf-8">
 <link rel="stylesheet" href="https://unpkg.com/@iooxa/article/dist/iooxa.css">
 <script src="https://unpkg.com/@iooxa/article"></script>
+<script src="https://unpkg.com/web3@latest/dist/web3.min.js"></script>
 <style>
 #main {
     margin: 3em;
@@ -220,17 +221,58 @@ body {
         Hence, Max Redeem Size is not a crucial parameter and actually counterproductive for the Redemption mechanism to work, but it still be interesting to implement but with a high value as a safeguard mechanism against potential Oracle Attacks.
     </p>
     <p>
-        In conclusion, this simulation identified one key risk of uncontrolled redeeming: the risk of almost complete treasury depletion, which happens only during an Oracle Attack. And two key parameters were identified for a more controlled and favorable redeeming mechanism: 1- Redeem Threshold (optimal value appearing to be 50% exactly), which defines the Redeem Price in-between the spot price and RFV Backing Price ; 2- An up-to-date Oracle to avoid abuse of Redeeming when it should be disabled.
+        In conclusion, this simulation identified one key risk of uncontrolled redeeming: the risk of almost complete treasury depletion, which happens only during an Oracle Attack. And two key parameters were identified for a more controlled and favorable redeeming mechanism: 1- Redeem Threshold (optimal value appearing to be 50% exactly), which defines the Redeem Price in-between the spot price and RFV Backing Price ; 2- An up-to-date Oracle to avoid abuse of Redeeming when it should be disabled. The simulation also demonstrates the benefits of a &lt;50% redemption mechanism below the backing price: 1) a constant buy pressure by arbitragers on markets that allows the price to remain close to the backing price, which can be helpful to avoid liquidations; 2) an additional (3,3) incentive when around the backing price, as hodlers can expect spot price to slowly increase over time since the backing price increases with redemptions. The downside is obviously a draining of the treasury since it is used to buy back the tokens from redeemers, but the draining is bounded with obviously a lower redemption threshold (ie, a smaller premium over spot price) draining treasury less as it benefits more the protocol while still benefitting arbitragers.
     </p>
     <p>
         It's worth noting that although this simulation only uses the RFV Treasury and RFV Backing Price, which are much easier to model since they only include the DAI stablecoin, the model can likely also apply to the Standalone Treasury (stablecoins + volatile assets like FTM but without LP tokens), see Credits for more infos on these other models.
     </p>
-    </div>
     
+    <h2>Buybacks vs redemption</h2>
+    <p>
+        Both mechanisms intend to fulfill a similar purpose, which is to buy back tokens at a discounted price from the market to burn them and hence deflate the supply, which acts as a kind of inverse bonding process (bonding increases supply, redemptions/buybacks decreases it), in exchange for losing some of the treasury (and hence capital to get yield returns on). Despite their similar purpose, they have distinct pros and cons.
+    </p>
+    <p>
+        Buybacks pros: since they do not happen at a specific time, as they are either <a href="https://discord.com/channels/902514779690790932/903000513988136990/937352085098340382">automatic but randomized (HEC staggered buybacks)</a> or manually done (TIME/WMEMO), they can be triggered at a much lower price and hence potentially produce a much better ROI for the protocol than redemptions. Cons: 1) Buybacks cannot maintain a stable spot price around the backing price hence affecting token holders trust, 2) they are more costly than redemptions due to slippage when buying on the market, hence buybacks can only be triggered at a lower spot price than redemptions to account for slippage and trading fees, whereas redemptions have none; 3) they provide no direct access to users to the treasury, hence buybacks cannot solve the digital reserve currency conundrum.
+    </p>
+    <p>
+        Redemptions pros: 1) since they are fully automated and externalized (it's not the protocol going to the market to buy back, it's token holders giving them directly to the protocol), redemptions should allow for near instantaneous price stabilization by applying an equal buying pressure to the selling pressure (ie, by arbitragers looping redemptions + spot buy until spot price is at backing price minus the fees they incur, so the spot price will stabilize slightly below the backing price); 2) the stabilized spot price provides an additional incentive to stake, since the interaction between the protocol's redemption function and arbitragers mostly guarantees that trying to trade below the backing price is risky, especially since the backing price increases monotonously during these periods; 3) redemption is a direct claim to the treasury for the token holders AND it guarantees a monotonous increase of the backing price if redemption threshold &lt;50%, hence providing one mechanism (but not sufficient on its own) to make the token a reserve currency. Redemptions cons: 1) even though using a redemption threshold &lt;50% guarantees the protocol will always redeem tokens with a net benefit (increasing the backing price), the protocol's benefits will always be (much) less than with buybacks, because redemption always buys higher than current spot price, whereas buybacks buy at spot price, and if done manually can even wait to buy the dip; 2) since it gives a direct access to the treasury to any user (if spot price &lt; backing price of course), it opens potential new attack vectors, one being an oracle attack as identified above.
+    </p>
+
+    <h2>What is a reserve currency?</h2>
+    <p>
+        One of the major, and most incorrect, claims of all rebasing DAOs is that they are reserve currencies. While they do indeed own their liquidity (protocol owned liquidity POL), this is only one part of the equation. The other is to offer either a constant value, or a monotonously increasing value, the latter being the target obviously since the former can be done simply by tracking a reference asset such as a peg to USD or gold.
+    </p>
+    <p>
+        In theory, rebasing DAOs initially could be seen as a reserve currency if bought at or below the backing price AND if willing to wait until the end of the runway period. Indeed, the runway period can be understood as the time needed to stake for the full dilution to happen until the token is so diluted (ie, so many tokens were minted) that the price per token has to be below $1, hence triggering the automatic $1 peg buyback, offering token holders the equivalent amount of treasury to the backing price that was displayed at the time they went in. Of course, in reality, due to minting and treasury yield ROI and other changes the rebasing DAO may have done meanwhile, the token holder may not receive exactly what was promised, but theoretically if the protocol only consisted of staking, this is what would happen. In other words, going beyond the runway is theoretically the only way for token holders to access the treasury of rebasing DAOs.
+    </p>
+    <p>
+        The issue is that all rebasing DAOs decided to progressively or completely remove dilution by either reducing or eliminating staking rebases. The only projects that did not yet eliminate rebases clearly state nowadays that the rebases APY returns will diminish over time. While this eliminate one way of dilution, this also eliminates the only access users had on the treasury, since the protocol's owners can extend the runway indefinitely.
+    </p>
+    <p>
+        Hence, automated (but not manual) buybacks or redemptions can be seen as not only a way to reduce selling pressure and spot price stabilization, but also as a mean for token holders to always have a direct claim on the treasury, which in turns is crucial for long-term trust, the key component of success for any financial project.
+    </p>
+    <p>
+        On top of that, properly parametrized redemptions and buybacks allow to increase the backing price, which combined with the fact they allow any token holder to use these mechanisms to directly access the treasury, means that the intrinsic value of the token monotonously increases when spot price &lt; backing price, which fulfills another requirement for a reserve currency.
+    </p>
+    <p>
+        Nevertheless, while these mechanisms provide a way to monotonously increase the intrinsic value when spot price &lt; backing price, they do not prevent inflation and intrinsic value devaluation when spot price &gt; backing price. Hence, redemptions and buybacks can only be a part of the solution to make an algorithmic reserve currency, there needs to also be a similar mechanism to increase the intrinsic value during positive trend markets.
+    </p>
+    </div>
+
+    <h2>Prologue</h2>
+
+    <p>
+        SpartacusDAO's main developer Spartacus refused the proposal, choosing to drastically lower down APY from ~400,000% to &lt;1,000% instead, with no redemption nor buybacks, to preserve treasury at all costs.
+    </p>
+
+    <p>
+        In December 2021, all rebasing DAOs (including OlympusDAO OHM) started a downtrend, which made them all reach below their backing price by the end of January 2022. This led to a resurgence of discussions on buyback and redemption mechanisms, which were mostly shunned in the past. On January 22nd, <a href="https://forum.olympusdao.finance/d/1020-oip-76-create-inverse-bond-policy-lever">OIP-76 on Ohm forums</a> proposed to implement the very same redemption mechanism as simulated here under the name of "inverse bonds".
+    </p>
+
     <div>
     <h2>Credits</h2>
     <ul>
-        <li>This simulation was coded by Kromer for the Spartacus.finance protocol.</li>
+        <li>This simulation was coded by Kromer aka Satoreph for the Spartacus.finance protocol. You can contact me at: satoreph a/t gmail dot com</li>
         <li>Many thanks to Romo who had the original idea to define a redemption threshold, which inspired this simulation, with the difference that their proposal was on the total treasury value instead of RFV treasury value (hence also including FTM and LP tokens) and that the Redeemable Threshold is configurable, with the assumption that &lt;50% may be more profitable for the protocol (which is false, 50% is optimal, see the Short Analysis sections for more details). Their spreadsheet, which show the same results, can be found here: <a href="https://discord.com/channels/901810422590627880/920429601338044466/921554042021371914">https://discord.com/channels/901810422590627880/920429601338044466/921554042021371914</a></li>
         <li>Kudos to anirudhab and Looser Spartan for their <a href="https://discord.com/channels/901810422590627880/902138528614469653/920898911479136266">initial suggestion</a> of a redemption mechanism inspired by ETFs, which in turns inspired Romo's suggestion and this simulation. More precisely, they proposed to use the Standalone treasury value (stablecoin + FTM, but not LP tokens).</li>
         <li>Thanks to Troughkin for his help in determining the equation for simulating the price change after buying using AMM's equation.</li>
@@ -260,6 +302,23 @@ body {
             redeembtn.disabled = 'false';
         }
     }
+
+//const Web3 = require('web3');
+const rpcURL = "https://cloudflare-eth.com/";
+const web3 = new Web3(rpcURL);
+const address = "0xb236e2ce0Ed8d7551526213aA1d7ABd2889C5039"
+console.log('web3 debug data');
+web3.eth.getBalance(address, (err, wei) => {
+  balance = web3.utils.fromWei(wei, 'ether')
+  console.log(balance);
+});
+
+const abi = [{"inputs":[{"internalType":"address","name":"_authority","type":"address"}],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"owner","type":"address"},{"indexed":true,"internalType":"address","name":"spender","type":"address"},{"indexed":false,"internalType":"uint256","name":"value","type":"uint256"}],"name":"Approval","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"contract IOlympusAuthority","name":"authority","type":"address"}],"name":"AuthorityUpdated","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"from","type":"address"},{"indexed":true,"internalType":"address","name":"to","type":"address"},{"indexed":false,"internalType":"uint256","name":"value","type":"uint256"}],"name":"Transfer","type":"event"},{"inputs":[],"name":"DOMAIN_SEPARATOR","outputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"owner","type":"address"},{"internalType":"address","name":"spender","type":"address"}],"name":"allowance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"approve","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"authority","outputs":[{"internalType":"contract IOlympusAuthority","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"account","type":"address"}],"name":"balanceOf","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"burn","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"account_","type":"address"},{"internalType":"uint256","name":"amount_","type":"uint256"}],"name":"burnFrom","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"decimals","outputs":[{"internalType":"uint8","name":"","type":"uint8"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"subtractedValue","type":"uint256"}],"name":"decreaseAllowance","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"addedValue","type":"uint256"}],"name":"increaseAllowance","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"account_","type":"address"},{"internalType":"uint256","name":"amount_","type":"uint256"}],"name":"mint","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"name","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"owner","type":"address"}],"name":"nonces","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"owner","type":"address"},{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"value","type":"uint256"},{"internalType":"uint256","name":"deadline","type":"uint256"},{"internalType":"uint8","name":"v","type":"uint8"},{"internalType":"bytes32","name":"r","type":"bytes32"},{"internalType":"bytes32","name":"s","type":"bytes32"}],"name":"permit","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"contract IOlympusAuthority","name":"_newAuthority","type":"address"}],"name":"setAuthority","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"symbol","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"totalSupply","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"recipient","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"transfer","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"sender","type":"address"},{"internalType":"address","name":"recipient","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"transferFrom","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"}];
+const contract_address = "0x64aa3364f17a4d01c6f1751fd97c2bd3d7e7f1d5";
+const contract = new web3.eth.Contract(abi, contract_address);
+contract.methods.name().call((err, result) => { console.log(result); });
+contract.methods.totalSupply().call((err, result) => { console.log(result); });
+console.log(contract.methods);
 
 </script>
 
